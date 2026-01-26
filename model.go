@@ -134,8 +134,8 @@ func (m *mongoModel[T, C]) DeleteMany(ctx context.Context, filter any) error {
 	return err
 }
 
-// Agregate executes an aggregation pipeline and decodes the results into C.
-func (m *mongoModel[T, C]) Agregate(
+// Aggregate executes an aggregation pipeline and decodes the results into C.
+func (m *mongoModel[T, C]) Aggregate(
 	ctx context.Context,
 	pipeline mongo.Pipeline,
 ) ([]C, error) {
@@ -194,6 +194,6 @@ type Model[T, C, D, FO, FMO, UO, P any] interface {
 	// DeleteMany deletes all documents that match the filter.
 	DeleteMany(ctx context.Context, filter D) error
 
-	// Agregate executes an aggregation pipeline and returns custom results.
-	Agregate(ctx context.Context, pipeline P) ([]C, error)
+	// Aggregate executes an aggregation pipeline and returns custom results.
+	Aggregate(ctx context.Context, pipeline P) ([]C, error)
 }
