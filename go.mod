@@ -1,4 +1,4 @@
-module github.com/atendi9/mongodb
+module github.com/atendi9/mongodb/v2
 
 go 1.24.6
 
