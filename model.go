@@ -5,8 +5,8 @@ import (
 	"context"
 	"fmt"
 
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 // mongoModel is a concrete MongoDB-backed implementation of Model.
@@ -32,7 +32,8 @@ type mongodb[T, C any] Model[
 	any,
 	*options.FindOneOptions,
 	*options.FindOptions,
-	*options.UpdateOptions,
+	*options.UpdateOneOptions,
+	*options.UpdateManyOptions,
 	mongo.Pipeline,
 ]
 
@@ -58,10 +59,14 @@ func New[T, C any](db *mongo.Database, name string) DefaultModel[T, C] {
 func (m *mongoModel[T, C]) FindOne(
 	ctx context.Context,
 	filter any,
-	options ...*options.FindOneOptions,
+	opts ...*options.FindOneOptions,
 ) (T, error) {
 	var result T
-	if err := m.collection.FindOne(ctx, filter, options...).Decode(&result); err != nil {
+	findOneOpts := options.FindOne()
+	findOneOpts.Opts = []func(*options.FindOneOptions) error{
+		setOptions(opts...),
+	}
+	if err := m.collection.FindOne(ctx, filter, findOneOpts).Decode(&result); err != nil {
 		return result, err
 	}
 	return result, nil
@@ -71,9 +76,13 @@ func (m *mongoModel[T, C]) FindOne(
 func (m *mongoModel[T, C]) FindMany(
 	ctx context.Context,
 	filter any,
-	options ...*options.FindOptions,
+	opts ...*options.FindOptions,
 ) ([]T, error) {
-	cursor, err := m.collection.Find(ctx, filter, options...)
+	findOpts := options.Find()
+	findOpts.Opts = []func(*options.FindOptions) error{
+		setOptions(opts...),
+	}
+	cursor, err := m.collection.Find(ctx, filter, findOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -107,9 +116,13 @@ func (m *mongoModel[T, C]) UpdateOne(
 	ctx context.Context,
 	filter any,
 	update any,
-	options ...*options.UpdateOptions,
+	opts ...*options.UpdateOneOptions,
 ) error {
-	_, err := m.collection.UpdateOne(ctx, filter, update, options...)
+	updateOneOpts := options.UpdateOne()
+	updateOneOpts.Opts = []func(*options.UpdateOneOptions) error{
+		setOptions(opts...),
+	}
+	_, err := m.collection.UpdateOne(ctx, filter, update, updateOneOpts)
 	return err
 }
 
@@ -118,9 +131,13 @@ func (m *mongoModel[T, C]) UpdateMany(
 	ctx context.Context,
 	filter any,
 	update any,
-	options ...*options.UpdateOptions,
+	opts ...*options.UpdateManyOptions,
 ) error {
-	_, err := m.collection.UpdateMany(ctx, filter, update, options...)
+	updateManyOpts := options.UpdateMany()
+	updateManyOpts.Opts = []func(*options.UpdateManyOptions) error{
+		setOptions(opts...),
+	}
+	_, err := m.collection.UpdateMany(ctx, filter, update, updateManyOpts)
 	return err
 }
 
@@ -168,11 +185,21 @@ func (m *mongoModel[T, C]) Aggregate(
 	return results, nil
 }
 
+func setOptions[T any](opts ...*T) func(opts *T) error {
+	fn := func(o *T) error {
+		if len(opts) > 0 {
+			o = opts[0]
+		}
+		return nil
+	}
+	return fn
+}
+
 // Model defines a generic interface for database operations.
 //
 // Generics provide compile-time safety and remove the need for
 // interface{} casting, which improves readability and performance.
-type Model[T, C, D, FO, FMO, UO, P any] interface {
+type Model[T, C, D, FO, FMO, UO, UM, P any] interface {
 
 	// FindOne finds a single document that matches the filter.
 	FindOne(ctx context.Context, filter D, options ...FO) (T, error)
@@ -187,7 +214,7 @@ type Model[T, C, D, FO, FMO, UO, P any] interface {
 	UpdateOne(ctx context.Context, filter D, data D, options ...UO) error
 
 	// UpdateMany updates multiple documents that match the filter.
-	UpdateMany(ctx context.Context, filter D, data D, options ...UO) error
+	UpdateMany(ctx context.Context, filter D, data D, options ...UM) error
 
 	// DeleteOne deletes a single document that matches the filter.
 	DeleteOne(ctx context.Context, filter D) error
