@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type testUser struct {
@@ -25,20 +24,17 @@ type testEmployee struct {
 }
 
 func TestMongoModel(t *testing.T) {
+	ctx := context.Background()
 	uri := os.Getenv("MONGODB_URI")
 	dbName := os.Getenv("DATABASE_NAME")
 
 	if uri == "" || dbName == "" {
 		t.Skip("env not set")
 	}
-
-	ctx := context.Background()
-	client, err := mongo.Connect(options.Client().ApplyURI(uri))
+	db, err := NewConnector(dbName, uri).Connect()
 	if err != nil {
 		t.Fatalf("connect error: %v", err)
 	}
-
-	db := client.Database(dbName)
 	_ = db.Collection("users").Drop(ctx)
 
 	model := New[testUser, testEmployee](db, "users")
