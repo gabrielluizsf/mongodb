@@ -60,13 +60,9 @@ func (c *DatabaseConnector) Connect() (*mongo.Database, error) {
 	if err != nil {
 		return nil, err
 	}
-    c.Client = client
+	c.Client = client
 	if c.Options != nil {
-		dbOpts := options.Database()
-		dbOpts.Opts = []func(*options.DatabaseOptions) error{
-			setOptions(c.Options),
-		}
-		return client.Database(c.DatabaseName, dbOpts), nil
+		return client.Database(c.DatabaseName, BuildDatabaseOptions(c.Options)), nil
 	}
 
 	return client.Database(c.DatabaseName), nil
